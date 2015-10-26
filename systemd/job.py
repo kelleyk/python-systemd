@@ -1,4 +1,4 @@
-#
+ #
 # Copyright (c) 2010 Mandriva
 #
 # This file is part of python-systemd.
@@ -23,6 +23,16 @@ dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 from systemd.property import Property
 from systemd.exceptions import SystemdError
+
+
+def job_if_exists(job_path):
+    try:
+        return Job(job_path)
+    except dbus.exceptions.DBusException as error:
+        if "Unknown interface 'org.freedesktop.systemd1.Job'." in str(error):
+            return None
+        raise
+    
 
 class Job(object):
     """Abstraction class to org.freedesktop.systemd1.Job interface"""
@@ -61,5 +71,5 @@ class Job(object):
     def cancel(self):
         try:
             self.__interface.Cancel()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)

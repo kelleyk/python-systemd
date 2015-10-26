@@ -23,7 +23,8 @@ dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 from systemd.property import Property
 from systemd.exceptions import SystemdError
-from systemd.job import Job
+from systemd.job import job_if_exists
+
 
 class Unit(object):
     """Abstraction class to org.freedesktop.systemd1.Unit interface"""
@@ -73,8 +74,8 @@ class Unit(object):
         """
         try:
             self.__interface.KillUnit(who, mode, signal)
-        except dbus.exceptions.DBusException, error:
-            print error
+        except dbus.exceptions.DBusException as error:
+            print(error)
             raise SystemdError(error)
 
     def reload(self, mode):
@@ -88,12 +89,9 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.Reload(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
-
-
 
     def reload_or_restart(self, mode):
         """Reload or restart unit.
@@ -106,9 +104,8 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.ReloadOrRestart(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reload_or_try_restart(self, mode):
@@ -122,15 +119,14 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.ReloadOrTryRestart(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reset_failed(self):
         try:
             self.__interface.ResetFailed()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)        
 
     def restart(self, mode):
@@ -144,9 +140,8 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.Restart(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def start(self, mode):
@@ -160,9 +155,8 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.Start(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def stop(self, mode):
@@ -176,9 +170,8 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.Stop(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def try_restart(self,mode):
@@ -192,7 +185,6 @@ class Unit(object):
         """
         try:
             job_path = self.__interface.TryRestart(mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException, error:
+            return job_if_exists(job_path)
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)

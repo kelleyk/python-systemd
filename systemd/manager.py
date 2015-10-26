@@ -26,8 +26,13 @@ from systemd.job import Job
 from systemd.property import Property
 from systemd.exceptions import SystemdError
 
+
 class Manager(object):
-    """Abstraction class to org.freedesktop.systemd1.Manager interface"""
+    """Abstraction class to org.freedesktop.systemd1.Manager interface.
+
+    The dbus interface is documented at https://wiki.freedesktop.org/www/Software/systemd/dbus/
+    """
+    
     def __init__(self):
         self.__bus = dbus.SystemBus()
         self.__proxy = self.__bus.get_object(
@@ -50,6 +55,9 @@ class Manager(object):
 
         self.__properties()
 
+    def __del__(self):
+        self.unsubscribe()
+
     def __on_properties_changed(self, *args, **kargs):
         self.__properties()
 
@@ -64,26 +72,26 @@ class Manager(object):
     def clear_jobs(self):
         try:
             self.__interface.ClearJobs()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def create_snapshot(self, name, cleanup):
         try:
             snapshot_path = self.__interface.CreateSnapshot(name, cleanup)
             return str(snapshot_path)
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def dump(self):
         try:
             self.__interface.Dump()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def exit(self):
         try:
             self.__interface.Exit()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def get_job(self, ID):
@@ -99,7 +107,7 @@ class Manager(object):
             job_path = self.__interface.GetJob(ID)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def get_unit(self, name):
@@ -115,7 +123,7 @@ class Manager(object):
             unit_path = self.__interface.GetUnit(name)
             unit = Unit(unit_path)
             return unit
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def get_unit_by_pid(self, pid):
@@ -131,19 +139,19 @@ class Manager(object):
             unit_path = self.__interface.GetUnitByPID(pid)
             unit = Unit(unit_path)
             return unit
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def halt(self):
         try:
             self.__interface.Halt()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def k_exec(self):
         try:
             self.__interface.KExec()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
     
     def kill_unit(self, name, who, mode, signal):
@@ -161,8 +169,8 @@ class Manager(object):
         """
         try:
             self.__interface.KillUnit(name, who, mode, signal)
-        except dbus.exceptions.DBusException, error:
-            print error
+        except dbus.exceptions.DBusException as error:
+            print(error)
             raise SystemdError(error)
 
     def list_jobs(self):
@@ -178,7 +186,7 @@ class Manager(object):
             for job in self.__interface.ListJobs():
                 jobs.append(Job(job[4]))
             return tuple(jobs)
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def list_units(self):
@@ -194,7 +202,7 @@ class Manager(object):
             for unit in self.__interface.ListUnits():
                 units.append(Unit(unit[6]))
             return tuple(units)
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def load_unit(self, name):
@@ -210,31 +218,31 @@ class Manager(object):
             unit_path = self.__interface.LoadUnit(name)
             unit = Unit(unit_path)
             return unit
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def power_off(self):
         try:
             self.__interface.PowerOff()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reboot(self):
         try:
             self.__interface.Reboot()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reexecute(self):
         try:
             self.__interface.Reexecute()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reload(self):
         try:
             self.__interface.Reload()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reload_or_restart_unit(self, name, mode):
@@ -251,7 +259,7 @@ class Manager(object):
             job_path = self.__interface.ReloadOrRestartUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reload_or_try_restart_unit(self, name, mode):
@@ -268,7 +276,7 @@ class Manager(object):
             job_path = self.__interface.ReloadOrTryRestartUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reload_unit(self, name, mode):
@@ -286,19 +294,19 @@ class Manager(object):
             job_path = self.__interface.ReloadUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reset_failed(self):
         try:
             self.__interface.ResetFailed()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reset_failed_unit(self, name):
         try:
             self.__interface.ResetFailedUnit(name)
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def restart_unit(self, name, mode):
@@ -315,13 +323,13 @@ class Manager(object):
             job_path = self.__interface.RestartUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def set_environment(self, names):
         try:
             self.__interface.SetEnvironment(names)
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def start_unit(self, name, mode):
@@ -338,7 +346,7 @@ class Manager(object):
             job_path = self.__interface.StartUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def start_unit_replace(self, old_unit, new_unit, mode):
@@ -356,7 +364,7 @@ class Manager(object):
             job_path = self.__interface.StartUnitReplace(old_unit, new_unit, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def stop_unit(self, name, mode):
@@ -373,14 +381,14 @@ class Manager(object):
             job_path = self.__interface.StopUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def subscribe(self):
         try:
             self.__interface.Subscribe()
-        except dbus.exceptions.DBusException, error:
-            print error
+        except dbus.exceptions.DBusException as error:
+            print(error)
             raise SystemdError(error)
 
     def try_restart_unit(self, name, mode):
@@ -389,8 +397,7 @@ class Manager(object):
         @param name: Unit name (ie: network.service).
         @param mode: Must be one of "fail" or "replace.
         
-        @raise SystemdError: Raised when no unit is found with the given name or
-        mode is invalid.
+        @raise SystemdError: Raised when no unit is found with the given name or mode is invalid.
         
         @rtype: L{systemd.job.Job}
         """
@@ -398,17 +405,134 @@ class Manager(object):
             job_path = self.__interface.TryRestartUnit(name, mode)
             job = Job(job_path)
             return job
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def unset_environment(self, names):
         try:
             self.__interface.UnsetEnvironment(names)
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def unsubscribe(self):
         try:
             self.__interface.Unsubscribe()
-        except dbus.exceptions.DBusException, error:
+        except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
+
+    # @_translate_dbus_exception
+    def enable_unit_files(self, files, runtime=False, force=False):
+        """
+        @param files: A list of paths (of unit files).
+        @param runtime: If True, symlink unit into /run (enabled only for runtime); if False, symlink unit into /etc.
+        @param force: If True, symlinks belonging to other units will be replaced if necessary.
+
+        @raise SystemdError
+
+        @rtype: 2-tuple of
+            b       carries_install_info
+            a(sss)  changes
+        """
+        try:
+            carries_install_info, changes = self.__interface.EnableUnitFiles(files, runtime, force)
+            return carries_install_info, changes
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+        
+    def disable_unit_files(self, files, runtime=False):
+        """
+        @param files: A list of paths (of unit ifles).
+        @param runtime: If True, remove symlinks from /run; if False, remove symlinks from /etc.
+
+        @raise SystemdError
+
+        @rtype: a(sss) changes
+        """
+        try:
+            changes = self.__interface.DisableUnitFiles(files, runtime)
+            return changes
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+        
+    def reenable_unit_files(self, files, runtime=False, force=False):
+        """Disable and then enable the given units.
+
+        This has the effect of returning the units' configuration symlinks to their defaults.
+
+        @param files: A list of paths (of unit files).
+        @param runtime: If True, symlink unit into /run (enabled only for runtime); if False, symlink unit into /etc.
+        @param force: If True, symlinks belonging to other units will be replaced if necessary.
+
+        @raise SystemdError
+
+        @rtype: 2-tuple of
+            b       carries_install_info
+            a(sss)  changes
+        """
+        try:
+            carries_install_info, changes = self.__interface.ReenableUnitFiles(files, runtime, force)
+            return carries_install_info, changes
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+
+    def list_unit_files(self):
+        """Returns a list of each unit file and its enablement status.
+
+        Enablement status is the same as the 'UnitFileState' property of the Unit.
+
+        @rtype: list of 2-tuples of (unit file path, enablement status)
+        """
+        try:
+            files = self.__interface.ListUnitFiles()
+            return files
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+
+    def get_unit_file_state(self, file_):
+        """Returns the enablement status of the given unit.
+
+        This is the same as the 'UnitFileState' property of the Unit.
+
+        @param file_: The filename (not path) of a unit file.
+
+        @rtype: enablement status; one of {'enabled', 'disabled', 'static', ...}
+        """
+        try:
+            state = self.__interface.GetUnitFileState(file_)
+            return state
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+        
+    # def link_unit_files(self, files, runtime, force):
+    #     pass
+
+    # def preset_unit_files(self, files, runtime, force):
+    #     pass
+
+    # def mask_unit_files(self, files, runtime, force):
+    #     pass
+
+    # def unmask_unit_files(self, files, runtime, force):
+    #     pass
+
+    def set_default_target(self, name):
+        try:
+            changes = self.__interface.SetDefaultTarget(name)
+            return changes
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+
+    def get_default_target(self):
+        """
+        @rtype: string; the name of a target; e.g. "graphical.target", "multi-user.target"
+        """
+        try:
+            name = self.__interface.GetDefaultTarget()
+            return name
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+    
+    # def set_unit_properties(name, runtime, properties):
+
+    # def start_transient_unit(name, mode, properties, aux):
+    
