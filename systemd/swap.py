@@ -24,6 +24,7 @@ dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 from systemd.property import Property
 from systemd.exceptions import SystemdError
 
+
 class Swap(object):
     """Abstraction class to org.freedesktop.systemd1.Swap interface"""
     def __init__(self, unit_path):
@@ -53,7 +54,7 @@ class Swap(object):
     def __properties(self):
         properties = self.__properties_interface.GetAll(
             self.__interface.dbus_interface)
-        attr_property =  Property()
+        attr_property = Property()
         for key, value in properties.items():
             setattr(attr_property, key, value)
         setattr(self, 'properties', attr_property)

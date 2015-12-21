@@ -179,29 +179,52 @@ class Manager(object):
         @raise SystemdError, IndexError: Raised when dbus error or index error
         is raised.
         
-        @rtype: A tuple of L{systemd.unit.Job}
+        @rtype: A list of L{systemd.unit.Job}
         """
         try:
             jobs = []
             for job in self.__interface.ListJobs():
                 jobs.append(Job(job[4]))
-            return tuple(jobs)
+            return jobs
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
-    def list_units(self):
+    def list_units(self, watch=True):
         """List all units, inactive units too.
+
+        Warning: each Unit object listens to the corresponding D-Bus object (to be notified of changes).  There is a
+        limit on the number of things that a single D-Bus client can monitor, so if there are too many systemd units,
+        this function will fail.  You can either pass watch=False (to avoid watching for changes to each unit) or use
+        iter_units() instead.
         
         @raise SystemdError: Raised when dbus error or index error
         is raised.
         
-        @rtype: A tuple of L{systemd.unit.Unit}
+        @rtype: A list of L{systemd.unit.Unit}
+
         """
         try:
             units = []
             for unit in self.__interface.ListUnits():
-                units.append(Unit(unit[6]))
-            return tuple(units)
+                units.append(Unit(unit[6], watch=watch))
+            return units
+        except dbus.exceptions.DBusException as error:
+            raise SystemdError(error)
+
+    def iter_units(self, watch=True):
+        """Return an iterator over all units, including inactive ones.
+
+        Iff watch is True, each object will not listen to the underlying D-Bus object for changes.
+        
+        @raise SystemdError: Raised when dbus error or index error
+        is raised.
+        
+        @rtype: An iterator over L{systemd.unit.Unit} objects
+
+        """
+        try:
+            for unit in self.__interface.ListUnits():
+                yield Unit(unit[6], watch=watch)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 

@@ -28,7 +28,7 @@ from systemd.job import job_if_exists
 
 class Unit(object):
     """Abstraction class to org.freedesktop.systemd1.Unit interface"""
-    def __init__(self, unit_path):
+    def __init__(self, unit_path, watch=True):
         self.__bus = dbus.SystemBus()
 
         self.__proxy = self.__bus.get_object(
@@ -43,19 +43,33 @@ class Unit(object):
             self.__proxy,
             'org.freedesktop.DBus.Properties')
 
-        self.__properties_interface.connect_to_signal(
-            'PropertiesChanged',
-            self.__on_properties_changed)
-
+        self.__on_properties_changed_match = None
+        if watch:
+            # @KK: How do we clean this up?  This becomes a call to self.__bus.add_signal_receiver(); it returns an
+            # instance of 'dbus.connection.SignalMatch'.  BusConnection seems to do the bookkeeping for a "watch" based
+            # on each match, and calls watch.cancel() in _clean_up_signal_match().  That is called only from
+            # Connection.remove_signal_receiver(), and that is called only from SignalMatch.remove().
+            self.__on_properties_changed_match = self.__properties_interface.connect_to_signal(
+                'PropertiesChanged',
+                self.__on_properties_changed)
+        
         self.__properties()
 
+    def __del__(self):
+        self._cleanup()
+
+    def _cleanup(self):
+        if self.__on_properties_changed_match is not None:
+            self.__on_properties_changed_match.remove()
+            self.__on_properties_changed_match = None
+            
     def __on_properties_changed(self, *args, **kargs):
         self.__properties()
 
     def __properties(self):
         properties = self.__properties_interface.GetAll(
             self.__interface.dbus_interface)
-        attr_property =  Property()
+        attr_property = Property()
         for key, value in properties.items():
             setattr(attr_property, key, value)
         setattr(self, 'properties', attr_property)
