@@ -1,21 +1,7 @@
-#
-# Copyright (c) 2010 Mandriva
-#
-# This file is part of python-systemd.
-#
-# python-systemd is free software; you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as
-# published by the Free Software Foundation; either version 2.1 of
-# the License, or (at your option) any later version.
-#
-# python-systemd is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
+import functools
+
+import dbus.exceptions
+
 
 class SystemdError(Exception):
     def __init__(self, error):
@@ -27,3 +13,14 @@ class SystemdError(Exception):
 
     def __repr__(self):
         return '%s(%s)' % (self.name, self.message)
+
+
+def raises_systemd_error(fn):
+    """If the wrapped function raises DBusException, it is wrapped in SystemdError and re-raised."""
+    @functools.wraps(fn)
+    def _wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except dbus.exceptions.DBusException as exc:
+            raise SystemdError(exc)
+    return _wrapper

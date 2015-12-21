@@ -25,55 +25,14 @@ from systemd.property import Property
 from systemd.exceptions import SystemdError
 from systemd.job import job_if_exists
 
+from .base import SystemdDbusObject
 
-class Unit(object):
+
+class Unit(SystemdDbusObject):
     """Abstraction class to org.freedesktop.systemd1.Unit interface"""
-    def __init__(self, unit_path, watch=True):
-        self.__bus = dbus.SystemBus()
 
-        self.__proxy = self.__bus.get_object(
-            'org.freedesktop.systemd1',
-            unit_path,)
-
-        self.__interface = dbus.Interface(
-            self.__proxy,
-            'org.freedesktop.systemd1.Unit',)
-
-        self.__properties_interface = dbus.Interface(
-            self.__proxy,
-            'org.freedesktop.DBus.Properties')
-
-        self.__on_properties_changed_match = None
-        if watch:
-            # @KK: How do we clean this up?  This becomes a call to self.__bus.add_signal_receiver(); it returns an
-            # instance of 'dbus.connection.SignalMatch'.  BusConnection seems to do the bookkeeping for a "watch" based
-            # on each match, and calls watch.cancel() in _clean_up_signal_match().  That is called only from
-            # Connection.remove_signal_receiver(), and that is called only from SignalMatch.remove().
-            self.__on_properties_changed_match = self.__properties_interface.connect_to_signal(
-                'PropertiesChanged',
-                self.__on_properties_changed)
-        
-        self.__properties()
-
-    def __del__(self):
-        self._cleanup()
-
-    def _cleanup(self):
-        if self.__on_properties_changed_match is not None:
-            self.__on_properties_changed_match.remove()
-            self.__on_properties_changed_match = None
-            
-    def __on_properties_changed(self, *args, **kargs):
-        self.__properties()
-
-    def __properties(self):
-        properties = self.__properties_interface.GetAll(
-            self.__interface.dbus_interface)
-        attr_property = Property()
-        for key, value in properties.items():
-            setattr(attr_property, key, value)
-        setattr(self, 'properties', attr_property)
-
+    __dbus_interace__ = 'org.freedesktop.systemd1.Unit'
+    
     def kill(self, who, mode, signal):
         """Kill unit.
         
@@ -87,7 +46,7 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            self.__interface.KillUnit(who, mode, signal)
+            self._interface.KillUnit(who, mode, signal)
         except dbus.exceptions.DBusException as error:
             print(error)
             raise SystemdError(error)
@@ -102,7 +61,7 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            job_path = self.__interface.Reload(mode)
+            job_path = self._interface.Reload(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
@@ -117,7 +76,7 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            job_path = self.__interface.ReloadOrRestart(mode)
+            job_path = self._interface.ReloadOrRestart(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
@@ -132,14 +91,14 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            job_path = self.__interface.ReloadOrTryRestart(mode)
+            job_path = self._interface.ReloadOrTryRestart(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
 
     def reset_failed(self):
         try:
-            self.__interface.ResetFailed()
+            self._interface.ResetFailed()
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)        
 
@@ -153,7 +112,7 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            job_path = self.__interface.Restart(mode)
+            job_path = self._interface.Restart(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
@@ -168,7 +127,7 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            job_path = self.__interface.Start(mode)
+            job_path = self._interface.Start(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
@@ -183,7 +142,7 @@ class Unit(object):
         @rtype: systemd.job.Job
         """
         try:
-            job_path = self.__interface.Stop(mode)
+            job_path = self._interface.Stop(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)
@@ -198,7 +157,7 @@ class Unit(object):
         @rtype: L{systemd.job.Job}
         """
         try:
-            job_path = self.__interface.TryRestart(mode)
+            job_path = self._interface.TryRestart(mode)
             return job_if_exists(job_path)
         except dbus.exceptions.DBusException as error:
             raise SystemdError(error)

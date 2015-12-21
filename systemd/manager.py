@@ -26,74 +26,55 @@ from systemd.job import Job
 from systemd.property import Property
 from systemd.exceptions import SystemdError
 
+from .base import SystemdDbusObject
+from .exceptions import SystemdError, raises_systemd_error
 
-class Manager(object):
+
+class Manager(SystemdDbusObject):
     """Abstraction class to org.freedesktop.systemd1.Manager interface.
 
     The dbus interface is documented at https://wiki.freedesktop.org/www/Software/systemd/dbus/
     """
     
     def __init__(self):
-        self.__bus = dbus.SystemBus()
-        self.__proxy = self.__bus.get_object(
-            'org.freedesktop.systemd1',
-            '/org/freedesktop/systemd1')
-
-        self.__interface = dbus.Interface(
-            self.__proxy,
-            'org.freedesktop.systemd1.Manager')
-
+        # XXX: For the time being, at least, we do NOT call the parent class's constructor because of the call to self.subscribe() here.
+        # super(Manager, self).__init__('/org/freedesktop/systemd1')
+        
+        self._bus = dbus.SystemBus()
+        self._proxy = self._bus.get_object('org.freedesktop.systemd1', '/org/freedesktop/systemd1')
+        self._interface = dbus.Interface(self._proxy, 'org.freedesktop.systemd1.Manager')
         self.subscribe()
 
-        self.__properties_interface = dbus.Interface(
-            self.__proxy,
-            'org.freedesktop.DBus.Properties')
-
-        self.__properties_interface.connect_to_signal(
-            'PropertiesChanged',
-            self.__on_properties_changed)
-
-        self.__properties()
+        self._properties_interface = dbus.Interface(self._proxy, 'org.freedesktop.DBus.Properties')
+        self._on_properties_changed_match = self._properties_interface.connect_to_signal('PropertiesChanged', self._on_properties_changed)
+        self._load_properties()
 
     def __del__(self):
         self.unsubscribe()
+        super(Manager, self).__del__()
 
-    def __on_properties_changed(self, *args, **kargs):
-        self.__properties()
+    @raises_systemd_error
+    def subscribe(self):
+        self._interface.Subscribe()
 
-    def __properties(self):
-        properties = self.__properties_interface.GetAll(
-            self.__interface.dbus_interface)
-        attr_property =  Property()
-        for key, value in properties.items():
-            setattr(attr_property, key, value)
-        setattr(self, 'properties', attr_property)
-
+    @raises_systemd_error
     def clear_jobs(self):
-        try:
-            self.__interface.ClearJobs()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
-
-    def create_snapshot(self, name, cleanup):
-        try:
-            snapshot_path = self.__interface.CreateSnapshot(name, cleanup)
-            return str(snapshot_path)
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
-
+        self._interface.ClearJobs()
+        
+    @raises_systemd_error
     def dump(self):
-        try:
-            self.__interface.Dump()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Dump()
 
+    @raises_systemd_error
     def exit(self):
-        try:
-            self.__interface.Exit()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Exit()
 
+    @raises_systemd_error
+    def create_snapshot(self, name, cleanup):
+        snapshot_path = self._interface.CreateSnapshot(name, cleanup)
+        return str(snapshot_path)
+
+    @raises_systemd_error
     def get_job(self, ID):
         """Get job by it ID.
         
@@ -103,13 +84,11 @@ class Manager(object):
         
         @rtype: systemd.job.Job
         """
-        try:
-            job_path = self.__interface.GetJob(ID)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.GetJob(ID)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def get_unit(self, name):
         """Get unit by it name.
         
@@ -119,13 +98,11 @@ class Manager(object):
         
         @rtype: systemd.unit.Unit
         """
-        try:
-            unit_path = self.__interface.GetUnit(name)
-            unit = Unit(unit_path)
-            return unit
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        unit_path = self._interface.GetUnit(name)
+        unit = Unit(unit_path)
+        return unit
 
+    @raises_systemd_error
     def get_unit_by_pid(self, pid):
         """Get unit by it PID.
         
@@ -135,25 +112,19 @@ class Manager(object):
         
         @rtype: systemd.unit.Unit
         """
-        try:
-            unit_path = self.__interface.GetUnitByPID(pid)
-            unit = Unit(unit_path)
-            return unit
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        unit_path = self._interface.GetUnitByPID(pid)
+        unit = Unit(unit_path)
+        return unit
 
+    @raises_systemd_error
     def halt(self):
-        try:
-            self.__interface.Halt()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Halt()
 
+    @raises_systemd_error
     def k_exec(self):
-        try:
-            self.__interface.KExec()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.KExec()
     
+    @raises_systemd_error
     def kill_unit(self, name, who, mode, signal):
         """Kill unit.
         
@@ -167,12 +138,9 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            self.__interface.KillUnit(name, who, mode, signal)
-        except dbus.exceptions.DBusException as error:
-            print(error)
-            raise SystemdError(error)
+        self._interface.KillUnit(name, who, mode, signal)
 
+    @raises_systemd_error
     def list_jobs(self):
         """List all jobs.
         
@@ -181,14 +149,12 @@ class Manager(object):
         
         @rtype: A list of L{systemd.unit.Job}
         """
-        try:
-            jobs = []
-            for job in self.__interface.ListJobs():
-                jobs.append(Job(job[4]))
-            return jobs
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        jobs = []
+        for job in self._interface.ListJobs():
+            jobs.append(Job(job[4]))
+        return jobs
 
+    @raises_systemd_error
     def list_units(self, watch=True):
         """List all units, inactive units too.
 
@@ -203,14 +169,12 @@ class Manager(object):
         @rtype: A list of L{systemd.unit.Unit}
 
         """
-        try:
-            units = []
-            for unit in self.__interface.ListUnits():
-                units.append(Unit(unit[6], watch=watch))
-            return units
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        units = []
+        for unit in self._interface.ListUnits():
+            units.append(Unit(unit[6], watch=watch))
+        return units
 
+    @raises_systemd_error
     def iter_units(self, watch=True):
         """Return an iterator over all units, including inactive ones.
 
@@ -222,12 +186,10 @@ class Manager(object):
         @rtype: An iterator over L{systemd.unit.Unit} objects
 
         """
-        try:
-            for unit in self.__interface.ListUnits():
-                yield Unit(unit[6], watch=watch)
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        for unit in self._interface.ListUnits():
+            yield Unit(unit[6], watch=watch)
 
+    @raises_systemd_error
     def load_unit(self, name):
         """Load unit by it name.
         
@@ -237,37 +199,27 @@ class Manager(object):
         
         @rtype: L{systemd.unit.Unit}
         """
-        try:
-            unit_path = self.__interface.LoadUnit(name)
-            unit = Unit(unit_path)
-            return unit
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        unit_path = self._interface.LoadUnit(name)
+        unit = Unit(unit_path)
+        return unit
 
+    @raises_systemd_error
     def power_off(self):
-        try:
-            self.__interface.PowerOff()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
-
+        self._interface.PowerOff()
+        
+    @raises_systemd_error
     def reboot(self):
-        try:
-            self.__interface.Reboot()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Reboot()
 
+    @raises_systemd_error
     def reexecute(self):
-        try:
-            self.__interface.Reexecute()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Reexecute()
 
+    @raises_systemd_error
     def reload(self):
-        try:
-            self.__interface.Reload()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Reload()
 
+    @raises_systemd_error
     def reload_or_restart_unit(self, name, mode):
         """Reload or restart unit.
         
@@ -278,13 +230,11 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.ReloadOrRestartUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.ReloadOrRestartUnit(name, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def reload_or_try_restart_unit(self, name, mode):
         """Reload or try restart unit.
         
@@ -295,13 +245,11 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.ReloadOrTryRestartUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.ReloadOrTryRestartUnit(name, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def reload_unit(self, name, mode):
         """Reload  unit.
         
@@ -313,25 +261,19 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.ReloadUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.ReloadUnit(name, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def reset_failed(self):
-        try:
-            self.__interface.ResetFailed()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.ResetFailed()
 
+    @raises_systemd_error
     def reset_failed_unit(self, name):
-        try:
-            self.__interface.ResetFailedUnit(name)
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.ResetFailedUnit(name)
 
+    @raises_systemd_error
     def restart_unit(self, name, mode):
         """Restart unit.
         
@@ -342,19 +284,15 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.RestartUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.RestartUnit(name, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def set_environment(self, names):
-        try:
-            self.__interface.SetEnvironment(names)
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
-
+        self._interface.SetEnvironment(names)
+        
+    @raises_systemd_error
     def start_unit(self, name, mode):
         """Start unit.
         
@@ -365,13 +303,11 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.StartUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.StartUnit(name, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def start_unit_replace(self, old_unit, new_unit, mode):
         """Start unit replace.
         
@@ -383,13 +319,11 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.StartUnitReplace(old_unit, new_unit, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.StartUnitReplace(old_unit, new_unit, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def stop_unit(self, name, mode):
         """Stop unit.
         
@@ -400,20 +334,11 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.StopUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.StopUnit(name, mode)
+        job = Job(job_path)
+        return job
 
-    def subscribe(self):
-        try:
-            self.__interface.Subscribe()
-        except dbus.exceptions.DBusException as error:
-            print(error)
-            raise SystemdError(error)
-
+    @raises_systemd_error
     def try_restart_unit(self, name, mode):
         """Try restart unit.
         
@@ -424,26 +349,19 @@ class Manager(object):
         
         @rtype: L{systemd.job.Job}
         """
-        try:
-            job_path = self.__interface.TryRestartUnit(name, mode)
-            job = Job(job_path)
-            return job
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        job_path = self._interface.TryRestartUnit(name, mode)
+        job = Job(job_path)
+        return job
 
+    @raises_systemd_error
     def unset_environment(self, names):
-        try:
-            self.__interface.UnsetEnvironment(names)
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.UnsetEnvironment(names)
 
+    @raises_systemd_error
     def unsubscribe(self):
-        try:
-            self.__interface.Unsubscribe()
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        self._interface.Unsubscribe()
 
-    # @_translate_dbus_exception
+    @raises_systemd_error
     def enable_unit_files(self, files, runtime=False, force=False):
         """
         @param files: A list of paths (of unit files).
@@ -456,12 +374,10 @@ class Manager(object):
             b       carries_install_info
             a(sss)  changes
         """
-        try:
-            carries_install_info, changes = self.__interface.EnableUnitFiles(files, runtime, force)
-            return carries_install_info, changes
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        carries_install_info, changes = self._interface.EnableUnitFiles(files, runtime, force)
+        return carries_install_info, changes
         
+    @raises_systemd_error
     def disable_unit_files(self, files, runtime=False):
         """
         @param files: A list of paths (of unit ifles).
@@ -471,12 +387,10 @@ class Manager(object):
 
         @rtype: a(sss) changes
         """
-        try:
-            changes = self.__interface.DisableUnitFiles(files, runtime)
-            return changes
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        changes = self._interface.DisableUnitFiles(files, runtime)
+        return changes
         
+    @raises_systemd_error
     def reenable_unit_files(self, files, runtime=False, force=False):
         """Disable and then enable the given units.
 
@@ -492,12 +406,10 @@ class Manager(object):
             b       carries_install_info
             a(sss)  changes
         """
-        try:
-            carries_install_info, changes = self.__interface.ReenableUnitFiles(files, runtime, force)
-            return carries_install_info, changes
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        carries_install_info, changes = self._interface.ReenableUnitFiles(files, runtime, force)
+        return carries_install_info, changes
 
+    @raises_systemd_error
     def list_unit_files(self):
         """Returns a list of each unit file and its enablement status.
 
@@ -505,12 +417,9 @@ class Manager(object):
 
         @rtype: list of 2-tuples of (unit file path, enablement status)
         """
-        try:
-            files = self.__interface.ListUnitFiles()
-            return files
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        return self._interface.ListUnitFiles()
 
+    @raises_systemd_error
     def get_unit_file_state(self, file_):
         """Returns the enablement status of the given unit.
 
@@ -520,11 +429,7 @@ class Manager(object):
 
         @rtype: enablement status; one of {'enabled', 'disabled', 'static', ...}
         """
-        try:
-            state = self.__interface.GetUnitFileState(file_)
-            return state
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        return self._interface.GetUnitFileState(file_)
         
     # def link_unit_files(self, files, runtime, force):
     #     pass
@@ -538,22 +443,17 @@ class Manager(object):
     # def unmask_unit_files(self, files, runtime, force):
     #     pass
 
+    @raises_systemd_error
     def set_default_target(self, name):
-        try:
-            changes = self.__interface.SetDefaultTarget(name)
-            return changes
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        changes = self._interface.SetDefaultTarget(name)
+        return changes
 
+    @raises_systemd_error
     def get_default_target(self):
         """
         @rtype: string; the name of a target; e.g. "graphical.target", "multi-user.target"
         """
-        try:
-            name = self.__interface.GetDefaultTarget()
-            return name
-        except dbus.exceptions.DBusException as error:
-            raise SystemdError(error)
+        return self._interface.GetDefaultTarget()
     
     # def set_unit_properties(name, runtime, properties):
 
